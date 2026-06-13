@@ -1,6 +1,6 @@
 # Violline - VPN Vless Client
 
-Modern VLESS client for Android powered by sing-box.
+Modern VLESS client for Android powered by xray.
 
 ## Features
 
@@ -55,4 +55,6 @@ Most functionality is still under active implementation.
 
 ## License
 
-MIT License
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at [https://mozilla.org.](https://www.mozilla.org/en-US/MPL/2.0/) */
