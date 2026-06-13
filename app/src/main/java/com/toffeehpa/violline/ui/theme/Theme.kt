@@ -1,22 +1,60 @@
 package com.toffeehpa.violline.ui.theme
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.ui.text.font.FontFamily
 
-private val ViollineColorScheme = darkColorScheme(
-    background = Color(0xFF0A0A0A),
-    surface = Color(0xFF141414),
-    primary = Color(0xFFFFFFFF),
-    onBackground = Color(0xFFFFFFFF),
-    onSurface = Color(0xFFFFFFFF),
+data class ViollineColors(
+    val background: Color,
+    val surface: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val accent: Color,
+    val divider: Color
 )
+
+data class ViollineTypography(
+    val fontFamily: FontFamily
+)
+
+val LocalViollineColors = staticCompositionLocalOf {
+    ViollineColors(
+        background = Background,
+        surface = Surface,
+        textPrimary = TextPrimary,
+        textSecondary = TextSecondary,
+        accent = Accent,
+        divider = Divider
+    )
+}
+
+val LocalViollineTypography = staticCompositionLocalOf {
+    ViollineTypography(fontFamily = FontFamily.Default)
+}
+
+object ViollineTheme {
+    val colors: ViollineColors
+        @Composable get() = LocalViollineColors.current
+    val typography: ViollineTypography
+        @Composable get() = LocalViollineTypography.current
+}
 
 @Composable
 fun ViollineTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = ViollineColorScheme,
+    CompositionLocalProvider(
+        LocalViollineColors provides ViollineColors(
+            background = Background,
+            surface = Surface,
+            textPrimary = TextPrimary,
+            textSecondary = TextSecondary,
+            accent = Accent,
+            divider = Divider
+        ),
+        LocalViollineTypography provides ViollineTypography(
+            fontFamily = IBMPlexSans
+        ),
         content = content
     )
 }
