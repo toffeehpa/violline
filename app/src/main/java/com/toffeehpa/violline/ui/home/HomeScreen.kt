@@ -6,8 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.widget.Toast
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +39,8 @@ import com.toffeehpa.violline.core.model.parseVlessUri
 import com.toffeehpa.violline.core.model.toSingBoxJson
 import com.toffeehpa.violline.core.service.ViollineVpnService
 import com.toffeehpa.violline.ui.theme.ViollineTheme
+import com.toffeehpa.violline.core.model.loadConfig
+import com.toffeehpa.violline.core.model.saveConfig
 
 @Composable
 fun HomeScreen() {
@@ -54,6 +60,27 @@ fun HomeScreen() {
                 connectionState = ConnectionState.CONNECTING
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        loadConfig(context)?.let { (json, name) ->
+            currentConfig = json
+            configName = name
+        }
+    }
+
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == ViollineVpnService.ACTION_STATUS) {
+                    val connected = intent.getBooleanExtra(ViollineVpnService.EXTRA_CONNECTED, false)
+                    connectionState = if (connected) ConnectionState.CONNECTED else ConnectionState.DISCONNECTED
+                }
+            }
+        }
+        val filter = IntentFilter(ViollineVpnService.ACTION_STATUS)
+        context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        onDispose { context.unregisterReceiver(receiver) }
     }
 
     fun toggleVpn() {
@@ -91,6 +118,7 @@ fun HomeScreen() {
             val parsed = parseVlessUri(text)
             currentConfig = parsed.toSingBoxJson()
             configName = parsed.name
+            saveConfig(context, currentConfig!!, parsed.name)
             Toast.makeText(context, "Added: ${parsed.name}", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(context, "Failed to parse: ${e.message}", Toast.LENGTH_SHORT).show()

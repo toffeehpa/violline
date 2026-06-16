@@ -30,7 +30,9 @@ class ViollineVpnService : VpnService(), BoxPlatformInterface {
         const val TAG = "ViollineVPN"
         const val ACTION_START = "com.toffeehpa.violline.START"
         const val ACTION_STOP = "com.toffeehpa.violline.STOP"
+        const val ACTION_STATUS = "com.toffeehpa.violline.STATUS"
         const val EXTRA_CONFIG = "config"
+        const val EXTRA_CONNECTED = "connected"
         const val NOTIFICATION_ID = 1
         const val CHANNEL_ID = "violline_vpn"
     }
@@ -143,6 +145,7 @@ class ViollineVpnService : VpnService(), BoxPlatformInterface {
                 boxInstance = libcore.Libcore.newSingBoxInstance(configJson, null)
                 boxInstance?.start()
                 Log.d(TAG, "Sing-box started")
+                sendBroadcast(Intent(ACTION_STATUS).putExtra(EXTRA_CONNECTED, true))
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start: $e")
             }
@@ -152,6 +155,7 @@ class ViollineVpnService : VpnService(), BoxPlatformInterface {
     private fun stopVpn() {
         serviceScope.launch {
             Log.d(TAG, "Stopping sing-box")
+            sendBroadcast(Intent(ACTION_STATUS).putExtra(EXTRA_CONNECTED, false))
             boxInstance?.close()
             boxInstance = null
             tunInterface?.close()

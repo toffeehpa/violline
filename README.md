@@ -45,12 +45,12 @@ Most functionality is still under active implementation.
 
 ## Roadmap
 
-- [ ] Basic VPN connection
-- [ ] VLESS configuration support
+- [X] Basic VPN connection
+- [X] VLESS configuration support
 - [ ] Profile management
 - [ ] Subscription support
 - [ ] Traffic monitoring
-- [ ] Settings screen
+- [X] Settings screen
 - [ ] Localization
 
 ## License
