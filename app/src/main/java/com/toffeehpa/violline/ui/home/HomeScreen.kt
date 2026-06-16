@@ -1,5 +1,13 @@
 package com.toffeehpa.violline.ui.home
 
+import android.app.Activity
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.VpnService
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,25 +19,95 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.composables.icons.lucide.QrCode
 import com.composables.core.Icon
-import com.composables.icons.lucide.ClipboardCopy
-import com.composables.icons.lucide.ClipboardPlus
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.QrCode
 import com.composables.icons.lucide.Power
-import com.composables.icons.lucide.ScanQrCode
+import com.composables.icons.lucide.ClipboardPaste
+import com.composables.icons.lucide.Copy
 import com.toffeehpa.violline.core.model.ConnectionState
+import com.toffeehpa.violline.core.model.parseVlessUri
+import com.toffeehpa.violline.core.model.toSingBoxJson
+import com.toffeehpa.violline.core.service.ViollineVpnService
 import com.toffeehpa.violline.ui.theme.ViollineTheme
 
 @Composable
 fun HomeScreen() {
     val colors = ViollineTheme.colors
     val typography = ViollineTheme.typography
+    val context = LocalContext.current
     var connectionState by remember { mutableStateOf(ConnectionState.DISCONNECTED) }
+    var currentConfig by remember { mutableStateOf<String?>(null) }
+    var configName by remember { mutableStateOf<String?>(null) }
+
+    val vpnPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            currentConfig?.let {
+                startVpn(context, it)
+                connectionState = ConnectionState.CONNECTING
+            }
+        }
+    }
+
+    fun toggleVpn() {
+        when (connectionState) {
+            ConnectionState.DISCONNECTED -> {
+                val config = currentConfig
+                if (config == null) {
+                    Toast.makeText(context, "No configuration. Add from clipboard first.", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                val intent = VpnService.prepare(context)
+                if (intent != null) {
+                    vpnPermissionLauncher.launch(intent)
+                } else {
+                    startVpn(context, config)
+                    connectionState = ConnectionState.CONNECTING
+                }
+            }
+            ConnectionState.CONNECTING,
+            ConnectionState.CONNECTED -> {
+                stopVpn(context)
+                connectionState = ConnectionState.DISCONNECTED
+            }
+        }
+    }
+
+    fun addFromClipboard() {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.trim()
+        if (text == null || !text.startsWith("vless://")) {
+            Toast.makeText(context, "No valid VLESS URI in clipboard", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val parsed = parseVlessUri(text)
+            currentConfig = parsed.toSingBoxJson()
+            configName = parsed.name
+            Toast.makeText(context, "Added: ${parsed.name}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Failed to parse: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun copyConfig() {
+        val config = currentConfig
+        if (config == null) {
+            Toast.makeText(context, "No configuration to copy", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = android.content.ClipData.newPlainText("Violline Config", config)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
 
     Column(
         modifier = Modifier
@@ -37,7 +115,6 @@ fun HomeScreen() {
             .background(colors.background)
             .padding(horizontal = 24.dp)
     ) {
-        // Top Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -55,21 +132,18 @@ fun HomeScreen() {
                 )
             )
             Icon(
-                imageVector = Lucide.ScanQrCode,
+                imageVector = Lucide.QrCode,
                 contentDescription = "QR",
                 tint = colors.textPrimary,
-                modifier = Modifier
-                    .size(22.dp)
-                    .clickable { }
+                modifier = Modifier.size(22.dp).clickable { }
             )
         }
 
-        // Status
         BasicText(
             text = when (connectionState) {
-                ConnectionState.DISCONNECTED -> "Disconnected"
+                ConnectionState.DISCONNECTED -> if (configName != null) "Ready · $configName" else "Disconnected"
                 ConnectionState.CONNECTING -> "Connecting..."
-                ConnectionState.CONNECTED -> "Connected"
+                ConnectionState.CONNECTED -> "Connected · $configName"
             },
             style = TextStyle(
                 fontFamily = typography.fontFamily,
@@ -82,7 +156,6 @@ fun HomeScreen() {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Power Button
         Box(
             modifier = Modifier
                 .size(120.dp)
@@ -91,28 +164,20 @@ fun HomeScreen() {
                 .border(
                     width = 1.5.dp,
                     color = when (connectionState) {
-                        ConnectionState.DISCONNECTED -> colors.textSecondary
-                        ConnectionState.CONNECTING -> colors.textSecondary
                         ConnectionState.CONNECTED -> colors.textPrimary
+                        else -> colors.textSecondary
                     },
                     shape = CircleShape
                 )
-                .clickable {
-                    connectionState = when (connectionState) {
-                        ConnectionState.DISCONNECTED -> ConnectionState.CONNECTING
-                        ConnectionState.CONNECTING -> ConnectionState.CONNECTED
-                        ConnectionState.CONNECTED -> ConnectionState.DISCONNECTED
-                    }
-                },
+                .clickable { toggleVpn() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Lucide.Power,
                 contentDescription = "Toggle VPN",
                 tint = when (connectionState) {
-                    ConnectionState.DISCONNECTED -> colors.textSecondary
-                    ConnectionState.CONNECTING -> colors.textSecondary
                     ConnectionState.CONNECTED -> colors.textPrimary
+                    else -> colors.textSecondary
                 },
                 modifier = Modifier.size(36.dp)
             )
@@ -120,7 +185,6 @@ fun HomeScreen() {
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Action Buttons
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -132,13 +196,13 @@ fun HomeScreen() {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, colors.divider, RoundedCornerShape(8.dp))
-                    .clickable { }
+                    .clickable { addFromClipboard() }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Lucide.ClipboardPlus,
+                    imageVector = Lucide.ClipboardPaste,
                     contentDescription = null,
                     tint = colors.textPrimary,
                     modifier = Modifier.size(18.dp)
@@ -158,13 +222,13 @@ fun HomeScreen() {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, colors.divider, RoundedCornerShape(8.dp))
-                    .clickable { }
+                    .clickable { copyConfig() }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Lucide.ClipboardCopy,
+                    imageVector = Lucide.Copy,
                     contentDescription = null,
                     tint = colors.textPrimary,
                     modifier = Modifier.size(18.dp)
@@ -180,4 +244,19 @@ fun HomeScreen() {
             }
         }
     }
+}
+
+private fun startVpn(context: Context, config: String) {
+    val intent = Intent(context, ViollineVpnService::class.java).apply {
+        action = ViollineVpnService.ACTION_START
+        putExtra(ViollineVpnService.EXTRA_CONFIG, config)
+    }
+    context.startForegroundService(intent)
+}
+
+private fun stopVpn(context: Context) {
+    val intent = Intent(context, ViollineVpnService::class.java).apply {
+        action = ViollineVpnService.ACTION_STOP
+    }
+    context.startService(intent)
 }

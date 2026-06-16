@@ -1,30 +1,18 @@
 package com.toffeehpa.violline.core.engine
 
-import libviolline.Controller
-import libviolline.Libviolline
+// import libviolline.Controller
+// import libviolline.Libviolline
 
 class XrayEngine : CoreEngine {
-    private val controller = Controller()
+    // private val controller = Controller()
 
-    override fun start(configJson: String): Result<Unit> {
-        return try {
-            controller.start(configJson)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    override fun start(configJson: String, tunFd: Int): Result<Unit> {
+        return Result.failure(Exception("XrayEngine disabled"))
     }
 
-    override fun stop(): Result<Unit> {
-        return try {
-            controller.stop()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    override fun stop(): Result<Unit> = Result.success(Unit)
 
-    override fun isRunning(): Boolean = controller.isRunning
+    override fun isRunning(): Boolean = false
 
-    override fun version(): String = Libviolline.version()
+    override fun version(): String = "xray (disabled)"
 }

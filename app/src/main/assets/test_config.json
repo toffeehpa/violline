@@ -1,0 +1,72 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "dns": {
+    "hosts": {
+      "fi1.vpnjantit.com": "192.145.29.140"
+    },
+    "servers": ["1.1.1.1", "8.8.8.8"]
+  },
+  "inbounds": [
+    {
+      "tag": "tun",
+      "protocol": "tun",
+      "settings": {
+        "network": "tcp,udp",
+        "stack": "gvisor"
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": true
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "proxy",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "fi1.vpnjantit.com",
+            "port": 443,
+            "users": [
+              {
+                "id": "dba5988e-6617-11f1-bb60-0f75a9790ea6",
+                "encryption": "none",
+                "flow": "xtls-rprx-vision"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "serverName": "cloudflare.com",
+          "fingerprint": "chrome",
+          "publicKey": "MK4xFGkRXJ5Kw0ff_cGAgLPC456VwspJlce-UoN0u18"
+        }
+      }
+    },
+    {
+      "tag": "dns-out",
+      "protocol": "dns"
+    }
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "port": 53,
+        "network": "udp",
+        "inboundTag": ["tun"],
+        "outboundTag": "dns-out"
+      }
+    ]
+  }
+}

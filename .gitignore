@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/src/main/assets/test_config.json
+app/src/main/assets/*.json
