@@ -40,7 +40,7 @@ fun parseVlessUri(uri: String): VlessConfig {
 
 fun VlessConfig.toSingBoxJson(mtu: Int = 1500): String {
     return JSONObject().apply {
-        put("log", JSONObject().put("level", "trace").put("timestamp", true))
+        put("log", JSONObject().put("level", "warn").put("timestamp", true))
         put("dns", JSONObject().apply {
             put("servers", JSONArray().apply {
                 put(JSONObject().apply {
@@ -99,29 +99,14 @@ fun VlessConfig.toSingBoxJson(mtu: Int = 1500): String {
                     })
                 })
             })
-            put(JSONObject().apply {
-                put("type", "direct")
-                put("tag", "direct")
-            })
-            put(JSONObject().apply {
-                put("type", "block")
-                put("tag", "block")
-            })
-            put(JSONObject().apply {
-                put("type", "dns")
-                put("tag", "dns-out")
-            })
+            put(JSONObject().apply { put("type", "direct"); put("tag", "direct") })
+            put(JSONObject().apply { put("type", "block"); put("tag", "block") })
+            put(JSONObject().apply { put("type", "dns"); put("tag", "dns-out") })
         })
         put("route", JSONObject().apply {
             put("rules", JSONArray().apply {
-                put(JSONObject().apply {
-                    put("protocol", "dns")
-                    put("outbound", "dns-out")
-                })
-                put(JSONObject().apply {
-                    put("ip_is_private", true)
-                    put("outbound", "direct")
-                })
+                put(JSONObject().apply { put("protocol", "dns"); put("outbound", "dns-out") })
+                put(JSONObject().apply { put("ip_is_private", true); put("outbound", "direct") })
             })
             put("final", "proxy")
             put("auto_detect_interface", true)

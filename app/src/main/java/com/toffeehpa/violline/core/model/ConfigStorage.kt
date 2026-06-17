@@ -5,6 +5,7 @@ import android.content.Context
 private const val PREFS_NAME = "violline_prefs"
 private const val KEY_CONFIG_JSON = "config_json"
 private const val KEY_CONFIG_NAME = "config_name"
+private const val KEY_MTU = "mtu"
 
 fun saveConfig(context: Context, configJson: String, name: String) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
@@ -18,4 +19,15 @@ fun loadConfig(context: Context): Pair<String, String>? {
     val json = prefs.getString(KEY_CONFIG_JSON, null) ?: return null
     val name = prefs.getString(KEY_CONFIG_NAME, "Unknown") ?: "Unknown"
     return Pair(json, name)
+}
+
+fun saveMtu(context: Context, mtu: Int) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+        .putInt(KEY_MTU, mtu)
+        .apply()
+}
+
+fun loadMtu(context: Context): Int {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getInt(KEY_MTU, 1500)
 }

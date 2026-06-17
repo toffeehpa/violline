@@ -47,6 +47,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.0")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("com.composables:core:1.24.0")
+    implementation("com.github.woheller69:FreeDroidWarn:V1.+")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling")

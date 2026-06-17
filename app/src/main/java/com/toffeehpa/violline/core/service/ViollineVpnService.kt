@@ -3,13 +3,19 @@ package com.toffeehpa.violline.core.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.net.VpnService
 import android.net.ConnectivityManager
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.toffeehpa.violline.core.engine.SingBoxEngine
+import com.toffeehpa.violline.core.model.ConnectionState
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import libcore.BoxInstance
 import libcore.BoxPlatformInterface
 
@@ -35,6 +41,8 @@ class ViollineVpnService : VpnService(), BoxPlatformInterface {
         const val EXTRA_CONNECTED = "connected"
         const val NOTIFICATION_ID = 1
         const val CHANNEL_ID = "violline_vpn"
+        private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+        val connectionState = _connectionState.asStateFlow()
     }
 
     // BoxPlatformInterface
@@ -114,6 +122,7 @@ class ViollineVpnService : VpnService(), BoxPlatformInterface {
     }
 
     private fun startVpn(configJson: String) {
+        _connectionState.value = ConnectionState.CONNECTING
         serviceScope.launch {
             try {
                 Log.d(TAG, "Initializing libcore")
@@ -143,9 +152,19 @@ class ViollineVpnService : VpnService(), BoxPlatformInterface {
 
                 Log.d(TAG, "Creating sing-box instance")
                 boxInstance = libcore.Libcore.newSingBoxInstance(configJson, null)
+
+                Handler(Looper.getMainLooper()).post {
+                    val statusIntent = Intent(ACTION_STATUS).apply {
+                        putExtra(EXTRA_CONNECTED, true)
+                        setPackage(packageName)
+                    }
+                    sendBroadcast(statusIntent)
+                }
+
+                _connectionState.value = ConnectionState.CONNECTED
+
                 boxInstance?.start()
                 Log.d(TAG, "Sing-box started")
-                sendBroadcast(Intent(ACTION_STATUS).putExtra(EXTRA_CONNECTED, true))
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start: $e")
             }
@@ -153,9 +172,12 @@ class ViollineVpnService : VpnService(), BoxPlatformInterface {
     }
 
     private fun stopVpn() {
+        _connectionState.value = ConnectionState.DISCONNECTED
         serviceScope.launch {
             Log.d(TAG, "Stopping sing-box")
-            sendBroadcast(Intent(ACTION_STATUS).putExtra(EXTRA_CONNECTED, false))
+            Handler(Looper.getMainLooper()).post {
+                sendBroadcast(Intent(ACTION_STATUS).putExtra(EXTRA_CONNECTED, false))
+            }
             boxInstance?.close()
             boxInstance = null
             tunInterface?.close()
@@ -174,10 +196,17 @@ class ViollineVpnService : VpnService(), BoxPlatformInterface {
     }
 
     private fun buildNotification(): Notification {
+        val stopIntent = PendingIntent.getService(
+            this,
+            0,
+            Intent(this, ViollineVpnService::class.java).apply { action = ACTION_STOP },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         return Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("Violline")
             .setContentText("VPN is active")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .addAction(Notification.Action.Builder(null, "Stop", stopIntent).build())
             .build()
     }
 
